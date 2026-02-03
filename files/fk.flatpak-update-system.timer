@@ -2,8 +2,8 @@
 Description=Run flatpak update some time after boot
 
 [Timer]
-OnBootSec=50
-RandomizedDelaySec=10s
+OnBootSec=1min
+RandomizedDelaySec=25s
 Persistent=true
 
 [Install]
