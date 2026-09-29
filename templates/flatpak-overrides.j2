@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+{% for section, settings in item.overrides.items() %}
+[{{ section }}]
+{% for key, value in settings.items() %}
+{% if value is iterable and value is not string %}
+{{ key }}={{ value | join(';') }};
+{% elif value is boolean %}
+{{ key }}={{ value | lower }}
+{% else %}
+{{ key }}={{ value }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}

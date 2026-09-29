@@ -1,0 +1,22 @@
+---
+- tags: [role-flatpak-install]
+  block:
+
+  # apt
+  - name: Apt {{ flatpak_apt_state }} flatpak
+    become: true
+    ansible.builtin.apt:
+      state: "{{ flatpak_apt_state }}"
+      name: flatpak
+
+  # add flathub remote
+  - name: Add flathub repo to system # works only for system
+    tags: flatpak-remote
+    become: true
+    community.general.flatpak_remote:
+      executable: /usr/bin/flatpak
+      name: flathub
+      state: present
+      method: system
+      enabled: true
+      flatpakrepo_url: https://flathub.org/repo/flathub.flatpakrepo # https://dl.flathub.org/repo/ # https://dl.flathub.org/repo/flathub.flatpakrepo

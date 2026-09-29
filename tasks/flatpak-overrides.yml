@@ -1,0 +1,60 @@
+---
+- tags: [role-flatpak-overrides]
+  when:
+  - flatpak_overrides is not string
+  - flatpak_overrides is not mapping
+  - flatpak_overrides is iterable
+  - flatpak_overrides | length > 0
+  block:
+
+  # assert
+  - name: Assertions for flatpak-overrides
+    loop: "{{ flatpak_overrides }}"
+    ansible.builtin.assert:
+      that:
+      - item.app != None
+
+  # user
+  - when: flatpak_user is defined and flatpak_user != None
+    block:
+
+    - name: Mkdir /home/{{ flatpak_user }}/.local/share/flatpak/overrides
+      become: true
+      ansible.builtin.file:
+        path: "/home/{{ flatpak_user }}/.local/share/flatpak/overrides"
+        state: directory
+        mode: '0755'
+        owner: "{{ flatpak_user }}"
+        group: "{{ flatpak_user }}"
+
+    - name: Template user overrides
+      loop: "{{ flatpak_overrides }}"
+      when: item.scope | default('system') == 'user'
+      become: true
+      ansible.builtin.template:
+        src: flatpak-overrides.j2
+        dest: "/home/{{ flatpak_user }}/.local/share/flatpak/overrides/{{ item.app }}"
+        mode: '0644'
+        owner: "{{ flatpak_user }}"
+        group: "{{ flatpak_user }}"
+
+  # system
+  - name: Mkdir /var/lib/flatpak/overrides
+    become: true
+    ansible.builtin.file:
+      path: /var/lib/flatpak/overrides
+      state: directory
+      owner: root
+      group: root
+      mode: '0755'
+
+  - name: Template system overrides
+    loop: "{{ flatpak_overrides }}"
+    when: item.scope | default('system') == 'system'
+    become: true
+    ansible.builtin.template:
+      src: flatpak-overrides.j2
+      dest: "/var/lib/flatpak/overrides/{{ item.app }}"
+      owner: root
+      group: root
+      mode: '0644'

@@ -1,15 +1,26 @@
 ---
 flatpak_user:
 flatpak_apt_state: present
+
+# APPS
+# ----
 flatpak_install_system: []
 flatpak_install_user: []
 flatpak_remove_system: []
 flatpak_remove_user: []
-flatpak_handler_restart: true
-flatpak_systemd_scope: system
-flatpak_systemd_copy: []
-flatpak_systemd_template: []
-flatpak_systemd_start: []
-flatpak_systemd_enable: []
-flatpak_systemd_disable: []
-flatpak_systemd_stop: []
+
+# OVERRIDES
+# ---------
+flatpak_overrides:
+# - app: org.example.app
+#   overrides: {}
+
+# SYSTEMD
+# -------
+flatpak_systemd_units: []
+# - name: 
+#   type:
+#   state:
+#   enabled:
+#   config:
+#   overrides:

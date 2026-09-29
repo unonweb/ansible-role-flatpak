@@ -1,0 +1,101 @@
+---
+- vars:
+    __flatpak_systemd_unit_name: "{{ item.name | splitext | first }}"
+    __flatpak_systemd_unit_name_with_ext: "{{ __flatpak_systemd_unit_name }}.{{ item.type | default('service') }}"
+    __flatpak_systemd_unit_dir: "{{ '/home/' + flatpak_user + '/.config/systemd/user' if item.scope is defined and item.scope == 'user' else '/etc/systemd/system' }}"
+    __flatpak_systemd_unit_path: "{{ __flatpak_systemd_unit_dir }}/{{ __flatpak_systemd_unit_name }}.{{ item.type | default('service') }}"
+  block:
+
+  # assert
+  - name: Assertions for un-install-systemd-unit
+    ansible.builtin.assert:
+      that:
+      - __flatpak_systemd_unit_name != None
+      - __flatpak_systemd_unit_path != None
+
+  # template unit
+  - when: (item.config is defined) or (item.template is defined)
+    block:
+
+    # mkdir user units
+    - name: Mkdir {{ __flatpak_systemd_unit_dir }}
+      when: (item.scope is defined) and (item.scope == 'user')
+      become: true
+      ansible.builtin.file:
+        state: directory
+        mode: u=rwx,g=,o=rx
+        owner: "{{ flatpak_user }}"
+        group: "{{ flatpak_user }}"
+        path: "{{ __flatpak_systemd_unit_dir }}"
+
+    # template from vars
+    - name: Template unit file {{ __flatpak_systemd_unit_path }}
+      when: (item.config is defined) and (item.template is not defined)
+      become: true
+      ansible.builtin.template:
+        src: systemd/systemd-unit.j2
+        dest: "{{ __flatpak_systemd_unit_path }}"
+        owner: "{{ flatpak_user if item.scope is defined and item.scope == 'user' else 'root' }}"
+        group: "{{ flatpak_user if item.scope is defined and item.scope == 'user' else 'root' }}"
+        mode: '0644'
+      register: __flatpak_systemd_unit_file
+
+    # template from file
+    - name: Template unit file {{ __flatpak_systemd_unit_path }}
+      when: (item.template is defined) and (item.config is not defined)
+      become: true
+      ansible.builtin.template:
+        src: "{{ item.template }}"
+        dest: "{{ __flatpak_systemd_unit_path }}"
+        owner: "{{ flatpak_user if item.scope is defined and item.scope == 'user' else 'root' }}"
+        group: "{{ flatpak_user if item.scope is defined and item.scope == 'user' else 'root' }}"
+        mode: '0644'
+      register: __flatpak_systemd_unit_file
+
+  # systemctl daemon-reload
+  - when: (__flatpak_systemd_unit_file is defined and __flatpak_systemd_unit_file is changed) or (__flatpak_systemd_unit_override is defined and __flatpak_systemd_unit_override is changed)
+    block:
+
+    # --user
+    - name: Reload systemd user daemon if unit has changed
+      when: (item.scope is defined) and (item.scope == 'user')
+      become: true
+      become_user: "{{ flatpak_user }}"
+      failed_when: false
+      ansible.builtin.systemd_service:
+        scope: user
+        daemon_reload: true
+
+    # --system
+    - name: Reload systemd system daemon if unit has changed
+      when: (item.scope is not defined) or (item.scope == 'system')
+      become: true
+      ansible.builtin.systemd_service:
+        scope: system
+        daemon_reload: true
+
+  # unit state
+  - when: (item.state is defined) or (item.enabled is defined)
+    block:
+
+    # --user
+    - name: Manage state of {{ __flatpak_systemd_unit_name }}
+      when: (item.scope is defined) and (item.scope == 'user')
+      become: true
+      become_user: "{{ flatpak_user }}"
+      failed_when: false
+      ansible.builtin.systemd_service:
+        scope: user
+        name: "{{ __flatpak_systemd_unit_name_with_ext }}"
+        state: "{{ item.state | default('started') }}"
+        enabled: "{{ item.enabled | default(true) }}"
+
+    # --system
+    - name: Manage state of {{ __flatpak_systemd_unit_name }}
+      when: (item.scope is not defined) or (item.scope == 'system')
+      become: true
+      ansible.builtin.systemd_service:
+        scope: system
+        name: "{{ __flatpak_systemd_unit_name_with_ext }}"
+        state: "{{ item.state | default('started') }}"
+        enabled: "{{ item.enabled | default(true) }}"

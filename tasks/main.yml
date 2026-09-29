@@ -1,71 +1,14 @@
 ---
-- name: flatpak-install role
-  tags:
-    - flatpak
+- name: Flatpak
+  tags: [role-flatpak]
   block:
 
-  # flatpak-framework
-  - name: Install flatpak framework
-    tags: flatpak-framework
-    block:
-
-    # apt
-    - name: Apt {{ flatpak_apt_state }} flatpak
-      become: true
-      ansible.builtin.apt:
-        state: "{{ flatpak_apt_state }}"
-        name: flatpak
-
-    # add flathub remote
-    - name: Add flathub repo to system # works only for system
-      tags: flatpak-remote
-      become: true
-      community.general.flatpak_remote:
-        executable: /usr/bin/flatpak
-        name: flathub
-        state: present
-        method: system
-        enabled: true
-        flatpakrepo_url: https://flathub.org/repo/flathub.flatpakrepo # https://dl.flathub.org/repo/ # https://dl.flathub.org/repo/flathub.flatpakrepo
-
-  # flatpak-apps
-  - name: Install flatpak apps
-    block:
-
-    # install system
-    - when: flatpak_install_system | length > 0
-      name: Install system flatpaks {{ flatpak_install_system }}
-      tags: flatpak-install
-      become: true
-      community.general.flatpak:
-        method: system
-        state: present
-        name: "{{ flatpak_install_system }}"
-
-    # remove system
-    - when: flatpak_remove_system | length > 0
-      name: Remove system flatpaks {{ flatpak_remove_system }}
-      tags: flatpak-remove
-      become: true
-      community.general.flatpak:
-        method: system
-        state: absent
-        name: "{{ flatpak_remove_system }}"
-
-    # install user (not implemented)
-    - ansible.builtin.assert:
-        that: flatpak_install_user | length == 0
-        fail_msg: "flatpak_install_user is not implemented {{ flatpak_install_user }}"
-
-    # remove user
-    - when: flatpak_remove_user | length == 0
-      name: Remove user flatpaks {{ flatpak_remove_user }}
-      tags: flatpak-remove
-      become: true
-      community.general.flatpak:
-        method: user
-        state: absent
-        name: "{{ flatpak_remove_user}}"
-
-  # systemd
-  - ansible.builtin.import_tasks: systemd.yml
+  - ansible.builtin.import_tasks: flatpak-install.yml
+  - ansible.builtin.import_tasks: flatpak-install-apps.yml
+  
+  - name: Process systemd unit configurations
+    ansible.builtin.include_tasks: flatpak-systemd-unit.yml
+    loop: "{{ flatpak_systemd_units }}"
+    loop_control:
+      loop_var: item
+      label: "{{ unit_item.name }}"

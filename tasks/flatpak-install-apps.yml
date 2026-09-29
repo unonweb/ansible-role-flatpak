@@ -1,0 +1,38 @@
+---
+- tags: [role-flatpak-install-apps]
+  block:
+
+  # install system
+  - when: flatpak_install_system | length > 0
+    name: Install system flatpaks {{ flatpak_install_system }}
+    tags: flatpak-install
+    become: true
+    community.general.flatpak:
+      method: system
+      state: present
+      name: "{{ flatpak_install_system }}"
+
+  # remove system
+  - when: flatpak_remove_system | length > 0
+    name: Remove system flatpaks {{ flatpak_remove_system }}
+    tags: flatpak-remove
+    become: true
+    community.general.flatpak:
+      method: system
+      state: absent
+      name: "{{ flatpak_remove_system }}"
+
+  # install user (not implemented)
+  - ansible.builtin.assert:
+      that: flatpak_install_user | length == 0
+      fail_msg: "flatpak_install_user is not implemented {{ flatpak_install_user }}"
+
+  # remove user
+  - when: flatpak_remove_user | length == 0
+    name: Remove user flatpaks {{ flatpak_remove_user }}
+    tags: flatpak-remove
+    become: true
+    community.general.flatpak:
+      method: user
+      state: absent
+      name: "{{ flatpak_remove_user}}"
